@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TEO TELECOM / SESSION V3</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #090909;
+  color: #ff5a1f;
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+header, footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.logo {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: .85;
+  letter-spacing: -0.08em;
+}
+
+.screen {
+  display: none;
+  max-width: 560px;
+  width: 100%;
+  margin: 70px auto;
+}
+
+.screen.active { display: block; }
+
+h1 {
+  font-size: 54px;
+  line-height: .86;
+  letter-spacing: -0.09em;
+  margin: 0 0 28px;
+  text-transform: uppercase;
+}
+
+p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255,90,31,.7);
+}
+
+button, input, select {
+  width: 100%;
+  padding: 15px;
+  margin: 7px 0;
+  border: 1px solid #ff5a1f;
+  background: transparent;
+  color: #ff5a1f;
+  border-radius: 0;
+  font-size: 13px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+button:hover {
+  background: #ff5a1f;
+  color: #090909;
+}
+
+.ghost {
+  border-color: rgba(255,90,31,.35);
+  color: rgba(255,90,31,.55);
+}
+
+.code {
+  border: 1px dashed #ff5a1f;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  padding: 22px;
+  margin: 20px 0;
+}
+
+.distance {
+  font-size: 100px;
+  font-weight: 900;
+  letter-spacing: -0.1em;
+  line-height: .8;
+  margin: 20px 0;
+}
+
+.label {
+  font-size: 11px;
+  color: rgba(255,90,31,.55);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hud div {
+  border: 1px solid rgba(255,90,31,.35);
+  padding: 12px;
+  font-size: 11px;
+  letter-spacing: .08em;
+  min-height: 58px;
+}
+
+.hud strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 17px;
+}
+
+.map {
+  width: 100%;
+  height: 420px;
+  border: 1px solid #ff5a1f;
+  background:
+    linear-gradient(rgba(255,90,31,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,90,31,.08) 1px, transparent 1px),
+    #0d0d0d;
+  background-size: 28px 28px;
+  overflow: hidden;
+  margin: 14px 0;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+}
+
+.signal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #ff5a1f;
+  color: #090909;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  animation: pulse .3s infinite alternate;
+}
+
+.signal.active { display: flex; }
+
+.signal h2 {
+  font-size: 54px;
+  line-height: .85;
+  letter-spacing: -0.09em;
+  margin: 0 0 20px;
+}
+
+.signal button {
+  max-width: 300px;
+  color: #090909;
+  border-color: #090909;
+}
+
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: .7; }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <div class="logo">TEO<br>TELECOM</div>
+    <div>ROUTE IS UNSTABLE</div>
+  </header>
+
+  <main id="index" class="screen active">
+    <h1>SIGNAL<br>BASED<br>RUNNING</h1>
+    <button onclick="go('role')">시작하기</button>
+    <button class="ghost">규칙</button>
+    <button class="ghost">GPS 드로우 구경하기</button>
+  </main>
+
+  <main id="role" class="screen">
+    <h1>WHO<br>ARE<br>YOU?</h1>
+    <button onclick="createHost()">주최자입니다</button>
+    <button onclick="go('join')">참가자입니다</button>
+  </main>
+
+  <main id="host" class="screen">
+    <div class="label">SESSION CODE</div>
+    <div id="hostCode" class="code">0000</div>
+    <button onclick="copyCode()">코드 복사</button>
+
+    <p>범위를 선택하면 오늘의 러닝 거리가 랜덤으로 확정됩니다.</p>
+
+    <select id="range">
+      <option value="3-10">3K — 10K</option>
+      <option value="4-8">4K — 8K</option>
+      <option value="5-12">5K — 12K</option>
+    </select>
+
+    <button onclick="lockDistance()">거리 확정</button>
+
+    <div id="lockedBox" style="display:none;">
+      <div class="label">DISTANCE LOCKED</div>
+      <div class="distance"><span id="lockedDistance">0</span>K</div>
+      <button onclick="startSession()">START SESSION</button>
+    </div>
+  </main>
+
+  <main id="join" class="screen">
+    <h1>JOIN<br>SIGNAL</h1>
+    <input id="joinCode" placeholder="GROUP CODE" maxlength="4" />
+    <button onclick="joinSession()">입장</button>
+  </main>
+
+  <main id="wait" class="screen">
+    <h1>WAITING<br>FOR HOST</h1>
+    <p>아직 거리값이 확정되지 않았거나, 세션 코드가 없습니다.</p>
+    <button onclick="joinSession()">새로고침</button>
+  </main>
+
+  <main id="ready" class="screen">
+    <div class="label">TODAY'S DISTANCE</div>
+    <div class="distance"><span id="runnerDistance">0</span>K</div>
+    <p>주최자가 시작하면 자동으로 세션 화면으로 이동합니다.</p>
+  </main>
+
+  <main id="live" class="screen">
+    <div class="hud">
+      <div>REMAINING<strong id="remainText">0.0K</strong></div>
+      <div>SIGNAL<strong id="signalCount">0</strong></div>
+      <div>GPS<strong id="gpsStatus">WAIT</strong></div>
+    </div>
+
+    <div class="map">
+      <svg id="mapSvg" viewBox="0 0 500 420"></svg>
+    </div>
+
+    <button onclick="sendLeaderSignal()">LEADER TRANSFER</button>
+    <button class="ghost" onclick="sendEndSignal()">END SESSION</button>
+  </main>
+
+  <main id="result" class="screen">
+    <h1>DRAW<br>COMPLETE</h1>
+
+    <div class="map">
+      <svg id="resultSvg" viewBox="0 0 500 420"></svg>
+    </div>
+
+    <p id="resultMeta"></p>
+    <button onclick="saveSVG()">이미지 저장</button>
+    <button onclick="shareResult()">공유하기</button>
+  </main>
+
+  <footer>
+    <span>TEO TELECOM</span>
+    <span>NO ROUTE / NO HEROES</span>
+  </footer>
+</div>
+
+<div id="signal" class="signal">
+  <div>
+    <h2>LEADER<br>TRANSFER</h2>
+    <button onclick="confirmSignal()">SIGNAL CONFIRMED</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://jgntepexhffkfcgyvdrj.supabase.co';
+
+const SUPABASE_ANON_KEY = 'sb_publishable_lM97i9t-qGiOfqEMs_KZHA_6Kt_mCtc';
+
+const { createClient } = supabase;
+
+const supabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+    
+const colors = ['#ff5a1f', '#ffe100', '#00e5ff', '#8cff00', '#ff4fd8', '#ffffff'];
+
+let channel = null;
+
+let session = {
+  code: null,
+  role: null,
+  distance: null,
+  remaining: 0,
+  startedAt: null,
+  leaderSignals: 0,
+  currentSegment: 0,
+  segments: [[]],
+  watchId: null,
+  fallbackTimer: null,
+  lastLatLng: null,
+  bounds: null
+};
+
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function createHost() {
+  session.role = 'host';
+  session.code = String(Math.floor(1000 + Math.random() * 9000));
+
+  const { error } = await supabaseClient.from('sessions').insert({
+    code: session.code,
+    distance: null,
+    started: false
+  });
+
+  if (error) {
+    alert('세션 생성 실패: ' + error.message);
+    return;
+  }
+
+  listenSession(session.code);
+  document.getElementById('hostCode').innerText = session.code;
+  go('host');
+}
+
+function copyCode() {
+  navigator.clipboard?.writeText(session.code);
+  alert('코드 복사됨: ' + session.code);
+}
+
+async function lockDistance() {
+  const [min, max] = document.getElementById('range').value.split('-').map(Number);
+  const distance = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  session.distance = distance;
+  session.remaining = distance;
+
+  const { error } = await supabaseClient
+    .from('sessions')
+    .update({ distance })
+    .eq('code', session.code);
+
+  if (error) {
+    alert('거리 확정 실패: ' + error.message);
+    return;
+  }
+
+  document.getElementById('lockedDistance').innerText = distance;
+  document.getElementById('lockedBox').style.display = 'block';
+
+  await sendSignal('distance-locked', { distance });
+}
+
+async function joinSession() {
+  const code = document.getElementById('joinCode').value.trim();
+
+  const { data, error } = await supabaseClient
+    .from('sessions')
+    .select('*')
+    .eq('code', code)
+    .maybeSingle();
+
+  if (error || !data || !data.distance) {
+    go('wait');
+    return;
+  }
+
+  session.role = 'runner';
+  session.code = code;
+  session.distance = data.distance;
+  session.remaining = data.distance;
+
+  listenSession(code);
+
+  document.getElementById('runnerDistance').innerText = data.distance;
+  go(data.started ? 'live' : 'ready');
+
+  if (data.started) startLocalSession();
+}
+
+async function startSession() {
+  if (!session.distance) return;
+
+  await supabaseClient
+    .from('sessions')
+    .update({ started: true })
+    .eq('code', session.code);
+
+  await sendSignal('session-started', {
+    distance: session.distance
+  });
+
+  startLocalSession();
+}
+
+function startLocalSession() {
+  session.startedAt = Date.now();
+  session.remaining = session.distance;
+  session.leaderSignals = 0;
+  session.currentSegment = 0;
+  session.segments = [[]];
+  session.lastLatLng = null;
+  session.bounds = null;
+
+  go('live');
+  updateHUD();
+  startGPS();
+
+  session.fallbackTimer = setInterval(() => {
+    if (!session.lastLatLng) addFakePoint();
+  }, 1000);
+}
+
+async function sendLeaderSignal() {
+  await sendSignal('leader-transfer', {
+    time: Date.now()
+  });
+}
+
+async function sendEndSignal() {
+  await sendSignal('session-ended', {
+    time: Date.now()
+  });
+  finishSession();
+}
+
+async function sendSignal(type, payload = {}) {
+  await supabaseClient.from('signals').insert({
+    session_code: session.code,
+    type,
+    payload
+  });
+}
+
+function listenSession(code) {
+  if (channel) supabaseClient.removeChannel(channel);
+
+  channel = supabaseClient
+    .channel(`session-${code}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'signals',
+        filter: `session_code=eq.${code}`
+      },
+      payload => {
+        const signal = payload.new;
+
+        if (signal.type === 'distance-locked') {
+          session.distance = signal.payload.distance;
+          session.remaining = signal.payload.distance;
+
+          const el = document.getElementById('runnerDistance');
+          if (el) el.innerText = session.distance;
+
+          if (session.role === 'runner') go('ready');
+        }
+
+        if (signal.type === 'session-started') {
+          session.distance = signal.payload.distance;
+          startLocalSession();
+        }
+
+        if (signal.type === 'leader-transfer') {
+          receiveLeaderSignal();
+        }
+
+        if (signal.type === 'session-ended') {
+          finishSession();
+        }
+      }
+    )
+    .subscribe();
+}
+
+function receiveLeaderSignal() {
+  session.leaderSignals++;
+  session.currentSegment++;
+  session.segments[session.currentSegment] = [];
+
+  document.getElementById('signal').classList.add('active');
+
+  if (navigator.vibrate) {
+    navigator.vibrate([120, 80, 120, 80, 120]);
+  }
+
+  setTimeout(() => {
+    document.getElementById('signal').classList.remove('active');
+    navigator.vibrate?.(0);
+  }, 10000);
+
+  updateHUD();
+}
+
+function confirmSignal() {
+  document.getElementById('signal').classList.remove('active');
+  navigator.vibrate?.(0);
+}
+
+function startGPS() {
+  if (!navigator.geolocation) {
+    document.getElementById('gpsStatus').innerText = 'NO GPS';
+    return;
+  }
+
+  document.getElementById('gpsStatus').innerText = 'ASK';
+
+  session.watchId = navigator.geolocation.watchPosition(
+    pos => {
+      document.getElementById('gpsStatus').innerText = 'LIVE';
+
+      const point = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        time: Date.now()
+      };
+
+      addGPSPoint(point);
+    },
+    err => {
+      document.getElementById('gpsStatus').innerText = 'ERROR';
+      console.log(err);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 10000
+    }
+  );
+}
+
+function addGPSPoint(point) {
+  if (point.accuracy > 80) return;
+
+  if (session.lastLatLng) {
+    const km = getDistanceKm(session.lastLatLng.lat, session.lastLatLng.lng, point.lat, point.lng);
+    if (km < 0.08) {
+      session.remaining = Math.max(0, session.remaining - km);
+    }
+  }
+
+  session.lastLatLng = point;
+  updateBounds(point);
+  session.segments[session.currentSegment].push(point);
+
+  if (session.remaining <= 0) finishSession();
+
+  renderRoute();
+  updateHUD();
+}
+
+function addFakePoint() {
+  const base = session.lastLatLng || { lat: 37.5665, lng: 126.9780 };
+  const point = {
+    lat: base.lat + (Math.random() - .5) * 0.001,
+    lng: base.lng + (Math.random() - .5) * 0.001,
+    accuracy: 10,
+    time: Date.now()
+  };
+
+  if (!session.lastLatLng) {
+    session.lastLatLng = point;
+  } else {
+    session.remaining = Math.max(0, session.remaining - 0.12);
+    session.lastLatLng = point;
+  }
+
+  updateBounds(point);
+  session.segments[session.currentSegment].push(point);
+
+  if (session.remaining <= 0) finishSession();
+
+  renderRoute();
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('remainText').innerText = Math.max(0, session.remaining).toFixed(2) + 'K';
+  document.getElementById('signalCount').innerText = session.leaderSignals;
+}
+
+function updateBounds(point) {
+  if (!session.bounds) {
+    session.bounds = {
+      minLat: point.lat,
+      maxLat: point.lat,
+      minLng: point.lng,
+      maxLng: point.lng
+    };
+  }
+
+  session.bounds.minLat = Math.min(session.bounds.minLat, point.lat);
+  session.bounds.maxLat = Math.max(session.bounds.maxLat, point.lat);
+  session.bounds.minLng = Math.min(session.bounds.minLng, point.lng);
+  session.bounds.maxLng = Math.max(session.bounds.maxLng, point.lng);
+}
+
+function project(point) {
+  const b = session.bounds;
+  const pad = 40;
+
+  const lngRange = b.maxLng - b.minLng || 0.001;
+  const latRange = b.maxLat - b.minLat || 0.001;
+
+  const x = pad + ((point.lng - b.minLng) / lngRange) * (500 - pad * 2);
+  const y = 420 - pad - ((point.lat - b.minLat) / latRange) * (420 - pad * 2);
+
+  return `${x},${y}`;
+}
+
+function renderRoute(targetId = 'mapSvg') {
+  const svg = document.getElementById(targetId);
+  svg.innerHTML = '';
+
+  session.segments.forEach((segment, i) => {
+    if (segment.length < 2) return;
+
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', segment.map(project).join(' '));
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke', colors[i % colors.length]);
+    polyline.setAttribute('stroke-width', '5');
+    polyline.setAttribute('stroke-linecap', 'round');
+    polyline.setAttribute('stroke-linejoin', 'round');
+
+    svg.appendChild(polyline);
+  });
+}
+
+function finishSession() {
+  if (session.watchId) navigator.geolocation.clearWatch(session.watchId);
+  clearInterval(session.fallbackTimer);
+  navigator.vibrate?.(0);
+
+  go('result');
+  renderRoute('resultSvg');
+
+  document.getElementById('resultMeta').innerText =
+    `SESSION ${session.code} / ${session.distance}K / LEADER TRANSFER ${session.leaderSignals}`;
+}
+
+function saveSVG() {
+  const svg = document.getElementById('resultSvg').outerHTML;
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `teotelecom-${session.code}.svg`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function shareResult() {
+  const text = `TEO TELECOM SESSION ${session.code} / ${session.distance}K / ${session.leaderSignals} SIGNALS`;
+
+  if (navigator.share) {
+    navigator.share({ title: 'TEO TELECOM', text });
+  } else {
+    navigator.clipboard?.writeText(text);
+    alert('공유 문구가 복사됐습니다.');
+  }
+}
+
+function getDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRad(v) {
+  return v * Math.PI / 180;
+}
+</script>
+</body>
+</html>

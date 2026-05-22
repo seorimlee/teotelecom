@@ -3,13 +3,16 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>TEO TELECOM / SESSION V3</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jomolhari&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <style>
         * {
@@ -84,6 +87,7 @@
             font-family: "Jomolhari", serif;
             color: #00f;
             text-decoration: underline;
+            text-align: center;
         }
 
         .code {
@@ -132,13 +136,14 @@
         .map {
             width: 100%;
             height: 420px;
-            background:
-                linear-gradient(rgba(255, 90, 31, .08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 90, 31, .08) 1px, transparent 1px),
-                #0d0d0d;
-            background-size: 28px 28px;
-            overflow: hidden;
+            border: 1px solid #ff5a1f;
             margin: 14px 0;
+            overflow: hidden;
+        }
+
+        #leafletMap {
+            width: 100%;
+            height: 100%;
         }
 
         svg {
@@ -257,7 +262,7 @@
             </div>
 
             <div class="map">
-                <svg id="mapSvg" viewBox="0 0 500 420"></svg>
+                <div id="leafletMap"></div>
             </div>
 
             <button onclick="sendLeaderSignal()">LEADER TRANSFER</button>
@@ -278,7 +283,7 @@
 
         <footer>
             <span>©TEOTELECOM</span>
-            <span>MOVE LIKE A PISSING DOG.</span>
+            <span>Move Like a pissing dog.</span>
         </footer>
     </div>
 
@@ -323,6 +328,22 @@
             lastLatLng: null,
             bounds: null
         };
+
+        let leafletMap = null;
+        let leafletLines = [];
+
+        function initMap() {
+            if (leafletMap) return;
+
+            leafletMap = L.map('leafletMap', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([37.5665, 126.9780], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(leafletMap);
+        }
 
         function go(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -444,6 +465,10 @@
             session.bounds = null;
 
             go('live');
+            setTimeout(() => {
+                initMap();
+                leafletMap.invalidateSize();
+            }, 100);
             updateHUD();
             startGPS();
 
@@ -653,23 +678,33 @@
             return `${x},${y}`;
         }
 
-        function renderRoute(targetId = 'mapSvg') {
-            const svg = document.getElementById(targetId);
-            svg.innerHTML = '';
+        function renderRoute() {
+            if (!leafletMap) return;
+
+            leafletLines.forEach(line => leafletMap.removeLayer(line));
+            leafletLines = [];
 
             session.segments.forEach((segment, i) => {
                 if (segment.length < 2) return;
 
-                const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-                polyline.setAttribute('points', segment.map(project).join(' '));
-                polyline.setAttribute('fill', 'none');
-                polyline.setAttribute('stroke', colors[i % colors.length]);
-                polyline.setAttribute('stroke-width', '5');
-                polyline.setAttribute('stroke-linecap', 'round');
-                polyline.setAttribute('stroke-linejoin', 'round');
+                const latlngs = segment.map(p => [p.lat, p.lng]);
 
-                svg.appendChild(polyline);
+                const line = L.polyline(latlngs, {
+                    color: colors[i % colors.length],
+                    weight: 5,
+                    opacity: 1
+                }).addTo(leafletMap);
+
+                leafletLines.push(line);
             });
+
+            const allPoints = session.segments.flat();
+            if (allPoints.length > 1) {
+                const bounds = L.latLngBounds(allPoints.map(p => [p.lat, p.lng]));
+                leafletMap.fitBounds(bounds, {
+                    padding: [40, 40]
+                });
+            }
         }
 
         function finishSession() {

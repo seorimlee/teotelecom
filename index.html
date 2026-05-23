@@ -311,11 +311,14 @@ function go(id) {
 
 function addEnglishTile(map) {
   L.tileLayer(
-    'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png',
-    { maxZoom: 20 }
+    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {
+      maxZoom: 20,
+      subdomains: 'abcd'
+    }
   ).addTo(map);
 }
-
+    
 function initMap() {
   if (leafletMap) return;
 

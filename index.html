@@ -262,6 +262,10 @@
             </div>
 
             <div class="map">
+                <div id="leafletMap"></div>
+            </div>
+
+            <div class="map">
                 <svg id="liveDrawSvg" viewBox="0 0 500 420"></svg>
             </div>
 
@@ -747,7 +751,7 @@
                 polyline.setAttribute('points', segment.map(project).join(' '));
                 polyline.setAttribute('fill', 'none');
                 polyline.setAttribute('stroke', colors[i % colors.length]);
-                polyline.setAttribute('stroke-width', '5');
+                polyline.setAttribute('stroke-width', '2');
                 polyline.setAttribute('stroke-linecap', 'round');
                 polyline.setAttribute('stroke-linejoin', 'round');
 

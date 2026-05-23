@@ -142,9 +142,21 @@
             overflow: hidden;
         }
 
+        .live-map {
+            position: relative;
+        }
+
         #leafletMap {
             width: 100%;
             height: 100%;
+            filter: grayscale(1) contrast(1.4) brightness(.9);
+        }
+
+        #liveDrawSvg {
+            position: absolute;
+            inset: 0;
+            z-index: 500;
+            pointer-events: none;
         }
 
         svg {
@@ -261,11 +273,8 @@
                 <div>GPS<strong id="gpsStatus">WAIT</strong></div>
             </div>
 
-            <div class="map">
+            <div class="map live-map">
                 <div id="leafletMap"></div>
-            </div>
-
-            <div class="map">
                 <svg id="liveDrawSvg" viewBox="0 0 500 420"></svg>
             </div>
 

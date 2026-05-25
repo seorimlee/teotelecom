@@ -322,6 +322,39 @@
             lastLatLng: null
         };
 
+        let audioCtx = null;
+
+        function unlockAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            audioCtx = audioCtx || new AudioContext();
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSignalSound() {
+            if (!audioCtx) return;
+
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            oscillator.type = 'square';
+            oscillator.frequency.value = 880;
+
+            gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.28);
+        }
+
         function go(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -446,6 +479,7 @@
             session.distance = data.distance;
             session.remaining = data.distance;
 
+            unlockAudio();
             listenSession(code);
 
             document.getElementById('runnerDistance').innerText = data.distance;
@@ -455,6 +489,7 @@
         }
 
         async function startSession() {
+            unlockAudio();
             if (!session.distance) return;
 
             await supabaseClient
@@ -570,6 +605,8 @@
 
             document.getElementById('signal').classList.add('active');
 
+            playSignalSound();
+            
             if (navigator.vibrate) {
                 navigator.vibrate([120, 80, 120, 80, 120]);
             }
@@ -630,7 +667,7 @@
                     point.lng
                 );
 
-                if (km < 0.08) {
+                if (km > 0.005 && km < 1) {
                     session.remaining = Math.max(0, session.remaining - km);
                 }
             }
